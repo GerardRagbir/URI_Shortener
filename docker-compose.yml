@@ -1,0 +1,49 @@
+# NOTE: this setup has not been built or tested yet. See "Docker" in the README.
+#
+#   docker compose up --build        then open http://localhost:8000
+#
+# Values are read from the shell or from a .env file next to this file.
+# Set at least STORAGE_SECRET, ADMIN_PASSWORD, DEMO_PASSWORD and POSTGRES_PASSWORD
+# before exposing this to anyone else.
+
+services:
+  app:
+    build: .
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      # Use a POSTGRES_PASSWORD that is safe inside a URL (letters and digits),
+      # or percent-encode it here.
+      DATABASE_URL: postgresql://urlshort:${POSTGRES_PASSWORD:-urlshort}@db:5432/urlshort
+      HOST: 0.0.0.0
+      PORT: 8000
+      STORAGE_SECRET: ${STORAGE_SECRET:-dev-only-change-me}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-demo}
+      BASE_URL: ${BASE_URL:-}
+      TRUST_PROXY_HEADERS: ${TRUST_PROXY_HEADERS:-false}
+    volumes:
+      - sessions:/app/.nicegui
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: urlshort
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-urlshort}
+      POSTGRES_DB: urlshort
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U urlshort -d urlshort"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  sessions:
